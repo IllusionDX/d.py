@@ -23,22 +23,23 @@ def download_tags(image_id, tag_separator):
         f.write(tag_list)
         print(f"Downloaded {tag_file_name}")
 
-def process_images(images, total_images, download_tags_enabled, tag_separator):
+def process_images(images, total_images, download_tags_enabled, tag_separator, starting_index=0):
     downloaded_images = 0
     for image in images:
-        if downloaded_images == total_images:
+        if starting_index + downloaded_images == total_images:
             break
         image_url, image_id = get_image_url_and_id(image)
         image_name = f"{image_id}{os.path.splitext(image_url)[1]}"
         if os.path.exists(image_name):
-            print(f"Skipping {image_name} ({downloaded_images+1}/{total_images})")
+            print(f"Skipping {image_name} ({starting_index+downloaded_images+1}/{total_images})")
             downloaded_images += 1
             continue
         download_image(image_url, image_name)
-        print(f"Downloaded {image_name} ({downloaded_images+1}/{total_images})")
+        print(f"Downloaded {image_name} ({starting_index+downloaded_images+1}/{total_images})")
         downloaded_images += 1
         if download_tags_enabled:
             download_tags(image_id, tag_separator)
+    return downloaded_images
 
 # Define request parameters
 params = {
@@ -86,7 +87,10 @@ if mode == "1":
         params["page"] = page
         response = requests.get("https://derpibooru.org/api/v1/json/search/images", params=params)
         data = json.loads(response.text)
-        process_images(data["images"], total_images, download_tags_enabled, tag_separator)
+        downloaded_images = process_images(data["images"], total_images, download_tags_enabled, tag_separator, starting_index=(page-1)*50)
+        total_downloaded_images = downloaded_images + (page-1)*50
+        if total_downloaded_images == total_images:
+            break
 
 elif mode == "2":
     image_ids = []
